@@ -1,10 +1,6 @@
 name: CI
 
-# Rust checks run on a self-hosted Linux runner, as a user of its own. The macOS
-# app can only be built with Xcode, so that job runs on a self-hosted Mac runner.
-#
-# Both runners run whatever a workflow says, so both jobs skip pull requests
-# from forks (see each job's `if`), and workflows from outside contributors
+# Both jobs run on GitHub's own runners. Workflows from outside contributors
 # wait for the owner's approval (Settings → Actions → General).
 
 on:
@@ -26,10 +22,7 @@ env:
 jobs:
   rust:
     name: Rust (fmt, clippy, test, build)
-    # Never for a pull request from a fork: this runner is self-hosted, and a
-    # fork's pull request would run its own code on the VM.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: helmroom-termight
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,8 +41,7 @@ jobs:
         run: cargo clippy --all-targets --locked -- -D warnings
 
       - name: Test
-        # The tests write a small cache under $HOME; give them a throwaway home
-        # so nothing lands in the runner user's real one.
+        # The tests write a small cache under $HOME; give them a throwaway home.
         run: |
           export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
           mkdir -p "$RUNNER_TEMP/home"
@@ -60,40 +52,37 @@ jobs:
 
   app:
     name: macOS app (test, build, verify)
-    # Never for a pull request from a fork: this runner is a real user on a real
-    # Mac, and a fork's pull request would run its own code there.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-26
     timeout-minutes: 30
-    defaults:
-      run:
-        # Login shell, so cargo and Homebrew are on PATH as they are in Terminal.
-        shell: /bin/zsh -l -e {0}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Set build folder
-        # Outside the checkout and removed at the end (see the last step).
-        run: echo "DERIVED_DATA=$RUNNER_TEMP/termight-derived" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
+
+      - name: Show tools
+        run: |
+          sw_vers
+          xcodebuild -version
+          cargo --version
 
       - name: Rust tests on macOS
         run: cargo test --release --locked
 
       - name: Build app
-        # The Xcode project builds and embeds the Rust core itself.
-        # Ad-hoc signed ("-"): the runner's background session cannot use the
-        # signing key in the login keychain, and CI only needs to prove the app
-        # builds. Signed builds come from build.sh and the release build.
+        # The Xcode project builds and embeds the Rust core itself. Ad-hoc
+        # signed ("-"): CI only needs to prove the app builds.
         run: |
           xcodebuild -project Termight/Termight.xcodeproj -scheme Termight \
-            -configuration Release -derivedDataPath "$DERIVED_DATA" -quiet build \
+            -configuration Release -derivedDataPath "$RUNNER_TEMP/derived" -quiet build \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
 
       - name: Verify app
         run: |
-          app="$DERIVED_DATA/Build/Products/Release/Termight.app"
+          app="$RUNNER_TEMP/derived/Build/Products/Release/Termight.app"
           codesign --verify --deep --strict "$app"
           test -x "$app/Contents/MacOS/termight-core"
           "$app/Contents/MacOS/termight-core" 'echo core runs'
@@ -108,9 +97,3 @@ jobs:
           path: ${{ runner.temp }}/Termight.app.zip
           retention-days: 7
           if-no-files-found: error
-
-      - name: Remove build products
-        # A second Termight.app on this Mac registers with Launch Services and can
-        # stop Spotlight from showing the installed app's actions.
-        if: always()
-        run: rm -rf "${DERIVED_DATA:?}"
