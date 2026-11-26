@@ -81,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if Prefs.d.bool(forKey: Prefs.notifyOnFinish) { Notifier.requestPermission() }
         SnippetIndex.reindex(SnippetStore.load())
         Updater.shared.start()
+        WindowTheme.apply()
         FinderService.shared.register()
         StatusCommands.shared.start()
     }

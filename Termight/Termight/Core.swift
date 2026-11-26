@@ -75,6 +75,16 @@ enum Runner {
         ["TERMIGHT_RC": Prefs.d.bool(forKey: Prefs.loadShellRC) ? "1" : "0"]
     }
 
+    /// The app's environment with `extra` on top, for a core process.
+    static func processEnvironment(_ extra: [String: String]) -> [String: String] {
+        ProcessInfo.processInfo.environment.merging(extra) { $1 }
+    }
+
+    /// A core process with the base settings and `extra`; nil if the core is missing.
+    private static func core(_ arguments: [String], _ extra: [String: String] = [:]) -> CoreRun? {
+        try? CoreRun(arguments: arguments, environment: baseEnvironment.merging(extra) { $1 })
+    }
+
     /// Run to completion from the home folder (Spotlight, Shortcuts, menu bar
     /// commands). Returns the status line followed by trimmed output.
     /// `strictValues`: with a snippet, text beyond its placeholders is refused
@@ -107,9 +117,7 @@ enum Runner {
     }
 
     static func check(_ line: String, cwd: String, environment extra: [String: String] = [:]) async -> Check {
-        guard let run = try? CoreRun(arguments: ["--check", "--cwd", cwd, "--", line],
-                                     environment: baseEnvironment.merging(extra) { $1 })
-        else { return .invalid("termight-core missing") }
+        guard let run = core(["--check", "--cwd", cwd, "--", line], extra) else { return .invalid("termight-core missing") }
         let r = await run.result()
         let info = r.output.trimmingCharacters(in: .whitespacesAndNewlines)
         switch r.status {
@@ -128,7 +136,7 @@ enum Runner {
     /// core's reason: never fall back to the typed line, which would run the
     /// snippet's name and values as a command.
     static func expand(_ line: String, environment extra: [String: String] = [:]) async -> Result<String, ExpandFailure> {
-        guard let run = try? CoreRun(arguments: ["--expand", "--", line], environment: baseEnvironment.merging(extra) { $1 })
+        guard let run = core(["--expand", "--", line], extra)
         else { return .failure(ExpandFailure(reason: "termight-core missing")) }
         let r = await run.result()
         let out = r.output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -142,14 +150,13 @@ enum Runner {
 
     /// Is `name` a real command (on PATH, a builtin, an alias), snippets aside?
     static func isCommand(_ name: String) async -> Bool {
-        guard let run = try? CoreRun(arguments: ["--which", "--", name], environment: baseEnvironment) else { return false }
+        guard let run = core(["--which", "--", name]) else { return false }
         return await run.result().status == 0
     }
 
     /// Tab completion: the word being completed and its candidates.
     static func complete(_ line: String, cwd: String) async -> (token: String, candidates: [String]) {
-        guard let run = try? CoreRun(arguments: ["--complete", "--cwd", cwd, "--", line], environment: baseEnvironment)
-        else { return ("", []) }
+        guard let run = core(["--complete", "--cwd", cwd, "--", line]) else { return ("", []) }
         var lines = await run.result().output.components(separatedBy: "\n")
         if lines.last == "" { lines.removeLast() }
         guard !lines.isEmpty else { return ("", []) }
@@ -167,7 +174,7 @@ final class CoreRun: @unchecked Sendable {
         guard let exe = Runner.executable else { throw Runner.Missing() }
         process.executableURL = exe
         process.arguments = arguments
-        process.environment = ProcessInfo.processInfo.environment.merging(environment) { $1 }
+        process.environment = Runner.processEnvironment(environment)
         process.standardOutput = pipe
         process.standardError = pipe
         process.standardInput = FileHandle.nullDevice
@@ -210,7 +217,7 @@ final class StreamRun: @unchecked Sendable {
         guard let exe = Runner.executable else { throw Runner.Missing() }
         process.executableURL = exe
         process.arguments = ["--stream"] + (color ? ["--color"] : []) + ["--cwd", cwd, "--", command]
-        process.environment = ProcessInfo.processInfo.environment.merging(environment) { $1 }
+        process.environment = Runner.processEnvironment(environment)
         process.standardOutput = out
         process.standardError = meta
         process.standardInput = FileHandle.nullDevice

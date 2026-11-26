@@ -1,8 +1,15 @@
 [package]
 name = "termight"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "GPL-3.0-only"
 
 [dependencies]
 clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }
+
+[profile.release]
+# Smaller core binary (about 0.77 MB instead of 1.2 MB), no speed cost measured.
+# No `panic = "abort"`: a panic still unwinds, so cleanup runs.
+lto = true
+strip = true
+codegen-units = 1

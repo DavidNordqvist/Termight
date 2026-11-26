@@ -61,8 +61,6 @@ unsafe extern "C" {
 }
 const SIGTERM: i32 = 15;
 const SIGKILL: i32 = 9;
-/// Output kept in memory for the log / non-stream result.
-const CAPTURE_CAP: usize = 5 * 1024 * 1024;
 /// After the shell exits, how long something else may keep its output open
 /// (a background child) before the process group is killed.
 const DRAIN_GRACE: Duration = Duration::from_millis(300);
@@ -366,16 +364,13 @@ fn run(raw: &str, stream: bool, strict: bool, color: bool, cwd: &Path, home: &Pa
         .filter(|(k, v)| k.starts_with(snippet::SECRET_PREFIX) && v.chars().count() >= 4)
         .map(|(_, v)| v)
         .collect();
-    let captured = Arc::new(Mutex::new(Vec::new()));
-    let truncated = Arc::new(AtomicBool::new(false));
-    let drained = Arc::new(AtomicBool::new(false));
+    let captured = Arc::new(Mutex::new(Capture::default()));
+    // The reader and the waiter report here, so the loop below wakes the
+    // moment the shell exits or its output ends instead of polling.
+    let (events, rx) = std::sync::mpsc::channel::<Event>();
     {
-        let (captured, truncated, drained, secrets) = (
-            Arc::clone(&captured),
-            Arc::clone(&truncated),
-            Arc::clone(&drained),
-            secret_values.clone(),
-        );
+        let (captured, events, secrets) =
+            (Arc::clone(&captured), events.clone(), secret_values.clone());
         // Not joined: a process that keeps the pipe open must not hold up the result.
         thread::spawn(move || {
             // Shown: colors kept with --color. Logged: plain text.
@@ -403,54 +398,48 @@ fn run(raw: &str, stream: bool, strict: bool, color: bool, cwd: &Path, home: &Pa
                     let _ = out.write_all(&redactor.push(&visible));
                     let _ = out.flush();
                 }
-                let mut c = captured.lock().unwrap();
-                if c.len() < CAPTURE_CAP {
-                    c.extend_from_slice(&clean);
-                } else {
-                    truncated.store(true, Ordering::SeqCst);
-                }
+                captured.lock().unwrap().push(&clean);
             }
             if stream {
                 let _ = out.write_all(&redactor.finish());
                 let _ = out.flush();
             }
-            drained.store(true, Ordering::SeqCst);
+            let _ = events.send(Event::Drained);
         });
     }
 
     // Wait for the shell, then for its output to end. The timeout and cancel
     // apply the whole time: a child that outlives the shell, or leaves the
     // process group, cannot keep this run going.
+    thread::spawn(move || {
+        let status = child.wait().ok();
+        let _ = events.send(Event::Exited(status));
+    });
     let start = Instant::now();
     let mut timed_out = false;
     let mut status = None;
+    let mut drained = false;
     let mut exited_at: Option<Instant> = None;
     let mut group_killed_at: Option<Instant> = None;
     loop {
-        if exited_at.is_none() {
-            match child.try_wait() {
-                Ok(Some(s)) => {
-                    status = Some(s);
-                    exited_at = Some(Instant::now());
-                }
-                Ok(None) => {}
-                Err(_) => exited_at = Some(Instant::now()),
-            }
-        }
-        if exited_at.is_some() && drained.load(Ordering::SeqCst) {
+        if exited_at.is_some() && drained {
             break;
         }
         let cancelled = CANCELLED.load(Ordering::SeqCst);
         let over = start.elapsed() >= timeout;
         match (exited_at, group_killed_at) {
             // The shell is still running.
-            (None, _) => {
+            (None, None) => {
                 if cancelled || over {
                     timed_out = over && !cancelled;
                     kill_group(pgid);
-                    status = child.wait().ok();
+                    group_killed_at = Some(Instant::now());
+                }
+            }
+            // Killed; its exit is on the way. Give up only if it never comes.
+            (None, Some(at)) => {
+                if at.elapsed() >= DRAIN_GIVE_UP * 4 {
                     exited_at = Some(Instant::now());
-                    group_killed_at = exited_at;
                 }
             }
             // The shell is gone but something still holds its output.
@@ -467,19 +456,22 @@ fn run(raw: &str, stream: bool, strict: bool, color: bool, cwd: &Path, home: &Pa
                 }
             }
         }
-        thread::sleep(Duration::from_millis(20));
+        // Woken at once by an event; the timeout only paces the cancel and
+        // deadline checks above (a signal can't wake a channel).
+        match rx.recv_timeout(Duration::from_millis(20)) {
+            Ok(Event::Exited(s)) => {
+                status = s;
+                exited_at = Some(Instant::now());
+            }
+            Ok(Event::Drained) => drained = true,
+            Err(_) => {}
+        }
     }
     let elapsed = exited_at.unwrap_or_else(Instant::now) - start;
-    let mut output = String::from_utf8_lossy(&captured.lock().unwrap()).into_owned();
+    let mut output = captured.lock().unwrap().text();
     // Complete here, where a chunk boundary can't split a secret.
     for secret in &secret_values {
         output = output.replace(secret.as_str(), "••••");
-    }
-    if truncated.load(Ordering::SeqCst) {
-        if !output.ends_with('\n') {
-            output.push('\n');
-        }
-        output.push_str("… output truncated at 5 MB\n");
     }
     let code = status.and_then(|s| s.code());
 
@@ -538,6 +530,69 @@ fn finish(
         } else {
             println!("… {more} more lines in ~/Library/Logs/termight/last.log");
         }
+    }
+}
+
+/// What the run loop waits for.
+enum Event {
+    /// The shell exited (None if waiting for it failed).
+    Exited(Option<std::process::ExitStatus>),
+    /// The output reached its end.
+    Drained,
+}
+
+/// The output kept for the logs and the non-stream result, at most 1 MB: the
+/// first 256 KB and the last 768 KB, so a long run keeps how it started and how
+/// it ended. What's left out between them is cut at line ends and noted.
+#[derive(Default)]
+struct Capture {
+    head: Vec<u8>,
+    tail: std::collections::VecDeque<u8>,
+    omitted: usize,
+}
+
+impl Capture {
+    const HEAD: usize = 256 * 1024;
+    const TAIL: usize = 768 * 1024;
+
+    fn push(&mut self, mut data: &[u8]) {
+        if self.head.len() < Self::HEAD {
+            let n = (Self::HEAD - self.head.len()).min(data.len());
+            self.head.extend_from_slice(&data[..n]);
+            data = &data[n..];
+        }
+        self.tail.extend(data);
+        if self.tail.len() > Self::TAIL {
+            let excess = self.tail.len() - Self::TAIL;
+            self.tail.drain(..excess);
+            self.omitted += excess;
+        }
+    }
+
+    fn text(&self) -> String {
+        let tail: Vec<u8> = self.tail.iter().copied().collect();
+        if self.omitted == 0 {
+            let mut all = self.head.clone();
+            all.extend_from_slice(&tail);
+            return String::from_utf8_lossy(&all).into_owned();
+        }
+        // Whole lines on both sides, so no line (or secret) is shown in part.
+        let head_end = self
+            .head
+            .iter()
+            .rposition(|&b| b == b'\n')
+            .map_or(0, |i| i + 1);
+        let tail_start = tail
+            .iter()
+            .position(|&b| b == b'\n')
+            .map_or(tail.len(), |i| i + 1);
+        let left_out = self.omitted + (self.head.len() - head_end) + tail_start;
+        format!(
+            "{}… {} KB of output left out …\n{}",
+            String::from_utf8_lossy(&self.head[..head_end]),
+            left_out.div_ceil(1024),
+            String::from_utf8_lossy(&tail[tail_start..])
+        )
     }
 }
 
@@ -1020,5 +1075,32 @@ mod tests {
         assert!(!cli(&["--help"]).unwrap_err().use_stderr());
         // As before: an unknown word up front starts the command.
         assert_eq!(cli(&["--bogus", "x"]).unwrap().text, vec!["--bogus", "x"]);
+    }
+
+    #[test]
+    fn capture_keeps_the_start_and_end_under_a_megabyte() {
+        let mut c = Capture::default();
+        c.push(b"small\n");
+        assert_eq!(c.text(), "small\n");
+        let mut c = Capture::default();
+        for i in 0..200_000 {
+            c.push(format!("line {i:06}\n").as_bytes());
+        }
+        let text = c.text();
+        assert!(
+            text.len() <= Capture::HEAD + Capture::TAIL + 100,
+            "{}",
+            text.len()
+        );
+        assert!(text.starts_with("line 000000\n"));
+        assert!(text.ends_with("line 199999\n"));
+        assert!(text.contains(" KB of output left out …\n"));
+        // Only whole lines on either side of the note.
+        for line in text.lines() {
+            assert!(
+                line.starts_with("line ") && line.len() == 11 || line.starts_with("… "),
+                "{line:?}"
+            );
+        }
     }
 }

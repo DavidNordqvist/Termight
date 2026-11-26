@@ -98,6 +98,8 @@ private struct GeneralSettings: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            WindowSettings()
+
             UpdateSettings()
         }
         .formStyle(.grouped)
@@ -122,6 +124,173 @@ private struct GeneralSettings: View {
         }
         loginStatus = LoginItem.status
         launchAtLogin = LoginItem.isEnabled || loginStatus == .requiresApproval
+    }
+}
+
+/// The bar's background color and opacity. Changes show in the bar at once.
+private struct WindowSettings: View {
+    @AppStorage(Prefs.windowStyle) private var style = "system"
+    @AppStorage(Prefs.windowColor) private var color = WindowLook.defaultColor
+    @AppStorage(Prefs.windowOpacity) private var opacity = 1.0
+    @AppStorage(Prefs.windowBlur) private var blur = true
+    @AppStorage(Prefs.windowText) private var textMode = "auto"
+    @AppStorage(Prefs.windowTextColor) private var textColor = WindowLook.defaultTextColor
+
+    /// A warning when text may be hard to read over some desktops: the color
+    /// (or the System look's) at this opacity, over black or over white, with
+    /// less than 4.5:1 contrast. Frost helps, so with blur on it only warns
+    /// at the thinner settings.
+    private var readabilityWarning: String? {
+        let base = style == "custom" ? color : WindowLook.systemColor
+        let text = WindowLook.text(on: base, custom: textMode == "custom" ? textColor : nil)
+        guard !WindowLook.readableOverAnyDesktop(color: base, opacity: opacity, text: text),
+              !blur || opacity < 0.7 else { return nil }
+        return blur
+            ? "Over some desktops text may be hard to read at this opacity. Raise the opacity if it is."
+            : "Over some desktops text may be hard to read without blur. Raise the opacity or turn the blur on."
+    }
+
+    /// Contrast of the chosen text on the chosen color (only known for a custom one).
+    private var contrastNote: String? {
+        guard textMode == "custom", style == "custom" else { return nil }
+        let ratio = WindowLook.contrast(textColor, color)
+        let verdict = ratio >= 4.5 ? "reads well" : ratio >= 3 ? "fine for large text only" : "hard to read"
+        return String(format: "Contrast with the background: %.1f:1, %@.", ratio, verdict)
+    }
+
+    @AppStorage(Prefs.windowTheme) private var themeID = "system"
+    @AppStorage(Prefs.colorOutput) private var colorOutput = true
+
+    var body: some View {
+        Section("Window") {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Theme")
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                    ForEach(WindowTheme.all) { t in
+                        ThemeTile(name: t.name,
+                                  background: t.background.map(WindowLook.color) ?? Color(nsColor: .windowBackgroundColor),
+                                  text: t.text.map(WindowLook.color) ?? .primary,
+                                  samples: colorOutput ? Self.samples(t.palette) : [],
+                                  selected: themeID == t.id) { WindowTheme.select(t.id) }
+                    }
+                    // Starts from whatever is set now, and shows the detailed controls.
+                    ThemeTile(name: "Custom…",
+                              background: style == "custom" ? WindowLook.color(color) : Color(nsColor: .windowBackgroundColor),
+                              text: textMode == "custom" ? WindowLook.color(textColor) : .primary,
+                              samples: colorOutput ? Self.samples(nil) : [],
+                              selected: themeID == "custom") { WindowTheme.select("custom") }
+                }
+            }
+            if themeID == "custom" {
+                Picker("Background", selection: $style) {
+                    Text("System").tag("system")
+                    Text("Custom color").tag("custom")
+                }
+                .pickerStyle(.segmented)
+                if style == "custom" {
+                    ColorPicker("Color", selection: Binding(get: { WindowLook.color(color) },
+                                                            set: { color = WindowLook.encode($0) }),
+                                supportsOpacity: false)
+                }
+                Picker("Text", selection: $textMode) {
+                    Text("Automatic").tag("auto")
+                    Text("Custom color").tag("custom")
+                }
+                .pickerStyle(.segmented)
+                if textMode == "custom" {
+                    ColorPicker("Text color", selection: Binding(get: { WindowLook.color(textColor) },
+                                                                 set: { textColor = WindowLook.encode($0) }),
+                                supportsOpacity: false)
+                    if let contrastNote {
+                        Text(contrastNote).font(.caption)
+                            .foregroundStyle(contrastNote.hasSuffix("reads well.") ? Color.secondary : Color.orange)
+                    }
+                }
+            }
+            LabeledContent("Opacity") {
+                HStack {
+                    Slider(value: $opacity, in: WindowLook.minOpacity...1)
+                        .frame(width: 180)
+                    Text("\(Int((opacity * 100).rounded()))%").monospacedDigit().frame(width: 40, alignment: .trailing)
+                }
+            }
+            Toggle("Background blur", isOn: $blur)
+                .help(blur ? "On: what's behind the bar is frosted; lower opacity thins the frost."
+                           : "Off: what's behind the bar shows through clearly.")
+            if let readabilityWarning {
+                Text(readabilityWarning).font(.caption).foregroundStyle(.orange)
+            }
+            Toggle("Show colors", isOn: $colorOutput)
+            Text("Commands run as if in a terminal, so ls, git and grep color their output and fit it to the bar's width. Pagers print straight through. Turn off to get plain text from a pipe.")
+                .font(.caption).foregroundStyle(.secondary)
+            HStack {
+                if themeID == "custom" {
+                    Text("A custom text color is used for what you type and for output without colors of its own.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Reset") {
+                    WindowTheme.select("system")
+                    color = WindowLook.defaultColor
+                    textColor = WindowLook.defaultTextColor
+                    opacity = 1.0
+                    blur = true
+                    colorOutput = true
+                }
+                .controlSize(.small)
+            }
+        }
+    }
+
+    /// Two output colors for a tile's sample line: the theme's own, or the system's.
+    private static func samples(_ palette: [String]?) -> [Color] {
+        guard let p = palette, p.count == 16 else { return [Color(nsColor: .systemBlue), Color(nsColor: .systemPurple)] }
+        return [WindowLook.color(p[6]), WindowLook.color(p[5]), WindowLook.color(p[3])]
+    }
+}
+
+/// One theme in Settings: a tiny bar in its colors, with its name.
+private struct ThemeTile: View {
+    let name: String
+    let background: Color
+    let text: Color
+    let samples: [Color]
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("~ ls").foregroundStyle(text)
+                    // With Show colors off, output is plain: the sample is in the text color.
+                    HStack(spacing: 5) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Text(["src", "docs", "run"][i]).foregroundStyle(samples.indices.contains(i) ? samples[i] : text)
+                        }
+                    }
+                    Text("$ done").foregroundStyle(text.opacity(0.6))
+                }
+                .font(.system(size: 10, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6)
+                .frame(height: 52)
+                .background(background)
+                Text(name)
+                    .font(.caption)
+                    .fontWeight(selected ? .semibold : .regular)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(.quaternary)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .overlay(RoundedRectangle(cornerRadius: 7)
+                .strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: selected ? 2 : 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(name) theme")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -175,7 +344,6 @@ private struct CommandSettings: View {
     @AppStorage(Prefs.allowShortcuts) private var allowShortcuts = false
     @AppStorage(Prefs.timeout) private var timeout = 300
     @AppStorage(Prefs.maxLines) private var maxLines = 500
-    @AppStorage(Prefs.colorOutput) private var colorOutput = true
     @AppStorage(Prefs.watchInterval) private var watchInterval = 2
 
     @State private var historyCleared = false
@@ -199,10 +367,7 @@ private struct CommandSettings: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Output") {
-                Toggle("Show colors", isOn: $colorOutput)
-                Text("Commands run as if in a terminal, so ls, git and grep color their output and fit it to the bar's width. Pagers print straight through. Turn off to get plain text from a pipe.")
-                    .font(.caption).foregroundStyle(.secondary)
+            Section("Watch") {
                 Stepper(value: $watchInterval, in: 1...3600) {
                     LabeledContent("Watch (⌥Return) runs every", value: Self.duration(watchInterval))
                 }

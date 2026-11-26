@@ -12,9 +12,12 @@ does under the hood, and the limits worth knowing about.
 | ⌘Return | Open in Terminal |
 | ⌥Return | Watch: run again every 2 seconds until Esc |
 | Tab | Complete a command, path or snippet name |
-| ↑ / ↓ | History, or move through a snippet's choices |
-| ⌃R | Search history |
+| ↑ / ↓ | History, showing each command's last output without running it; or move through a snippet's choices |
+| ⌃R | Search history; the highlighted command's last output shows below |
 | ⇧⌘C / ⌘R / ⌘L | Copy all output / run again / open the full log |
+| ⌘F | Find in the shown output; Return or ↓ next, ↑ previous |
+| ⌘D | Compare with the previous kept run of the same command: new or changed lines are tinted |
+| ⌘K | Keep this output, so newer runs never push it out (up to 5) |
 | ⌘P | Pin the bar so it stays open and on top |
 | Esc | Cancel or stop the running command, then clear, then close |
 
@@ -22,6 +25,12 @@ The dot next to what you type: green runs, blue opens in Terminal (or is a
 snippet that will ask for values), orange isn't a command. With "Only run
 recognized commands" on (the default), Return won't run an orange line;
 ⇧Return will.
+
+Drag the bar to a screen edge to tile it, as with other windows: the left or
+right edge for half the screen, a corner for a quarter, the top for the whole
+screen. Drag it away from the edge and it goes back to its earlier size. It
+follows System Settings → Desktop & Dock (tiling on or off, and margins), and
+an edge shared with another display doesn't tile.
 
 ## Snippets
 
@@ -104,7 +113,7 @@ Nothing runs until you press Return, and Esc drops the files.
 
 ## Colors
 
-With colors on (Settings → Commands), commands run on a pseudo-terminal, as
+With Show colors on (Settings → General → Window), commands run on a pseudo-terminal, as
 they would in Terminal. Programs that only color for a terminal (`ls`, `git`,
 `grep`) do, and output fits the bar's width.
 
@@ -122,12 +131,41 @@ they would in Terminal. Programs that only color for a terminal (`ls`, `git`,
 - Copy (⇧⌘C) and the logs are plain text.
 - Turn colors off to run commands on a plain pipe, as earlier versions did.
 
+## Window look
+
+Settings → General → Window has themes, each a background, a text color and
+an accent together: System, Amber, Phosphor, Matrix, Paper, Midnight, Winter,
+Spring, Summer, Fall and Cyberpunk. Most also change the colors of command
+output so `ls` and `git` match and stay readable: Matrix makes everything a
+shade of green on pure black; Paper, Winter and Spring use dark inks on their
+light backgrounds; Summer (sand and coral on deep sea) and Fall (amber and
+rust on dark brown) use warm bright ones; Cyberpunk uses neon (hot pink,
+electric cyan, acid yellow). System, Amber, Phosphor and Midnight keep the
+usual output colors.
+**Custom…** starts from what's set now and shows the detailed controls:
+background (System or a color) and text (Automatic or a color).
+
+Opacity (30% to 100%) and blur apply to every theme. Opacity sets how much
+shows through: lower opacity thins the frost as well as the color, down to a
+faint frost at 30%. With blur off, the bar is plain see-through at your
+opacity. When text might be hard to read over some desktops (under 4.5:1
+contrast over pure black or pure white behind the bar), Settings says so; it
+doesn't stop you.
+
+With Automatic text on a color, text is dark or light, whichever has more
+contrast with that color. A chosen text color is used for what you type and
+for output without colors of its own; output with its own colors keeps them
+(or a theme's own), and secondary text is the same color, fainter. Reset goes
+back to the System theme at 100% with blur and colors on.
+
 ## Watch
 
 ⌥Return runs a command, then runs it again every 2 seconds (Settings →
 Commands) until you press Esc. Each run's output appears when that run
-finishes, with lines that changed since the previous run highlighted. Changes
-are compared line by line, so one inserted line marks everything below it.
+finishes, with lines that changed since the previous run highlighted. Only the
+lines that are new or different are marked, so one inserted line marks just
+itself. Above about 2,000 lines per run, lines are compared by position
+instead, and one inserted line marks everything below it.
 Commands that need a real terminal can't be watched. A watched command goes into
 your history once, not on every run.
 
@@ -179,7 +217,6 @@ the app and reopens it. Running commands are stopped first, after asking.
   official releases. Update it with `git pull` and `./build.sh`.
 - Termight can't ask for an admin password. If it lives somewhere you can't
   write to, it sends you to the release page instead.
-- Updates can't be checked while the repository is private.
 
 ## What Termight stores
 
@@ -188,20 +225,27 @@ Everything stays on your Mac, in files only your user can read:
 | Where | What |
 |---|---|
 | `~/Library/Logs/termight/history.log` | Every command you ran, with snippet values, cut to the last 5,000 |
-| `~/Library/Logs/termight/last.log`, `jobs/` | Output of the last command and of this session's jobs, up to 5 MB each |
+| `~/Library/Logs/termight/last.log` | Output of the last command, up to 1 MB |
+| `~/Library/Logs/termight/jobs/` | Output of recent commands run in the bar, kept across restarts so ↑↓, ⌃R and ⌘D can use it: up to 1 MB each, the last 100 commands plus up to 5 you keep with ⌘K, and never more than 10 MB in all, so a few large outputs push older ones out sooner (the oldest go first) |
 | `~/Library/Application Support/Termight/snippets.tsv` | Your snippets |
 | `~/Library/Caches/termight/` | Your login shell's PATH and alias names |
 | Login keychain | Snippet secrets |
 
-Start a line with a space to keep it out of the history. Settings → Commands →
-**Clear History** deletes the history. A notification for a finished command
+A command's log keeps its first 256 KB and its last 768 KB, with a note where
+the middle was left out. The history file is cut to its last 5,000 commands.
+Altogether Termight's logs stay around 12 MB at most.
+
+Start a line with a space to keep it out of the history and its output out of
+`jobs/` after a restart. Settings → Commands → **Clear History** deletes the
+history and the kept output, including outputs kept with ⌘K. A notification for a finished command
 shows the command, unless it started with a space.
 
 ## Other limits
 
 - Requires macOS 26 or later on Apple Silicon.
 - The bar keeps the last 500 lines on screen (Settings → Commands) and at most
-  1 MB; the full output, up to 5 MB, is in the job's log (⌘L).
+  1 MB. The job's log (⌘L) keeps up to 1 MB: the start and the end of the
+  output.
 - Commands time out after 5 minutes in the bar (adjustable).
 - A command that leaves something running with its output attached
   (`sleep 60 &`) has that process stopped when the command ends. Detach it

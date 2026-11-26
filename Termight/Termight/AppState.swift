@@ -29,6 +29,9 @@ enum Prefs {
     static let winTop = "launcherTop"
     static let winW = "launcherWidth"
     static let winH = "launcherHeight"
+    /// The bar's size before it was tiled; set only while it's tiled.
+    static let untiledW = "launcherUntiledWidth"
+    static let untiledH = "launcherUntiledHeight"
     static let checkForUpdates = "checkForUpdates"
     static let lastUpdateCheck = "lastUpdateCheck"
     static let notifiedUpdate = "notifiedUpdate"
@@ -37,6 +40,13 @@ enum Prefs {
     static let colorOutput = "colorOutput"
     static let watchInterval = "watchInterval"
     static let statusCommands = "statusCommands"
+    static let windowStyle = "windowStyle"  // "system" or "custom"
+    static let windowColor = "windowColor"  // "r g b", 0–1 sRGB
+    static let windowOpacity = "windowOpacity"
+    static let windowBlur = "windowBlur"
+    static let windowTheme = "windowTheme"  // a WindowTheme id, or "custom"
+    static let windowText = "windowText"  // "auto" or "custom"
+    static let windowTextColor = "windowTextColor"  // "r g b", 0–1 sRGB
 
     static func register() {
         UserDefaults.standard.register(defaults: [
@@ -54,6 +64,13 @@ enum Prefs {
             checkForUpdates: true,
             colorOutput: true,
             watchInterval: 2,
+            windowStyle: "system",
+            windowColor: WindowLook.defaultColor,
+            windowOpacity: 1.0,
+            windowBlur: true,
+            windowTheme: "system",
+            windowText: "auto",
+            windowTextColor: WindowLook.defaultTextColor,
         ])
     }
 
@@ -139,6 +156,7 @@ final class AppState: ObservableObject {
         for f in ["history.log", "last.log"] {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(f))
         }
+        jobs.clearFinished()
     }
 
     func revealLogs() {

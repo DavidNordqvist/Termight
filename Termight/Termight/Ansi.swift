@@ -32,11 +32,17 @@ enum Ansi {
 
     /// The text split into lines of styled runs. A `\r` not followed by `\n`
     /// starts its line over, as in a terminal.
-    static func lines(_ s: String) -> [Line] {
+    static func lines(_ s: some StringProtocol) -> [Line] {
+        lines(s, start: Style()).lines
+    }
+
+    /// The same, starting in `start` (the style a previous chunk ended in);
+    /// also returns the style at the end, for the next chunk.
+    static func lines(_ s: some StringProtocol, start: Style) -> (lines: [Line], end: Style) {
         var lines: [Line] = []
         var line: Line = []
         var text = ""
-        var style = Style()
+        var style = start
         let scalars = Array(s.unicodeScalars)
         var i = 0
 
@@ -79,8 +85,16 @@ enum Ansi {
         }
         flush()
         if !line.isEmpty { lines.append(line) }
-        return lines
+        return (lines, style)
     }
+
+    /// Each line without styles: what comparisons and find work on.
+    static func plainLines(_ s: some StringProtocol) -> [String] {
+        lines(s).map(plainLine)
+    }
+
+    /// The tint for lines that changed (watch, ⌘D) and the current find match.
+    static let changedTint = Color.yellow.opacity(0.28)
 
     /// The same text with no styles: what Copy puts on the clipboard.
     static func plain(_ s: String) -> String {
@@ -91,20 +105,35 @@ enum Ansi {
 
     /// Styled text for the output view; `highlight` marks lines (by index)
     /// that changed since the last run of a watched command.
-    static func render(_ lines: [Line], highlight: Set<Int> = []) -> AttributedString {
+    static func render(_ lines: [Line], highlight: Set<Int> = [], mark: String? = nil) -> AttributedString {
         var out = AttributedString()
         for (n, line) in lines.enumerated() {
             if n > 0 { out.append(AttributedString("\n")) }
-            for run in line {
-                var piece = AttributedString(run.text)
-                piece.mergeAttributes(attributes(run.style))
-                if highlight.contains(n) { piece.backgroundColor = Color.yellow.opacity(0.28) }
-                out.append(piece)
-            }
-            if line.isEmpty, highlight.contains(n) {
-                var mark = AttributedString(" ")
-                mark.backgroundColor = Color.yellow.opacity(0.28)
-                out.append(mark)
+            out.append(renderLine(line, highlight: highlight.contains(n), mark: mark))
+        }
+        return out
+    }
+
+    /// One line; `highlight` tints it (a changed line), `mark` picks out every
+    /// occurrence of a search term, ignoring case.
+    static func renderLine(_ line: Line, highlight: Bool = false, mark: String? = nil) -> AttributedString {
+        var out = AttributedString()
+        for run in line {
+            var piece = AttributedString(run.text)
+            piece.mergeAttributes(attributes(run.style))
+            if highlight { piece.backgroundColor = changedTint }
+            out.append(piece)
+        }
+        if line.isEmpty, highlight {
+            var blank = AttributedString(" ")
+            blank.backgroundColor = changedTint
+            out.append(blank)
+        }
+        if let mark, !mark.isEmpty {
+            var from = out.startIndex
+            while from < out.endIndex, let r = out[from...].range(of: mark, options: .caseInsensitive) {
+                out[r].backgroundColor = Color.orange.opacity(0.55)
+                from = r.upperBound
             }
         }
         return out
@@ -178,7 +207,19 @@ enum Ansi {
     }
 
     /// Terminal colors in system colors, so they read in light and dark mode.
+    /// The 16 basic terminal colors to use instead of the system ones (a
+    /// theme's), and a counter bumped on each change so styled output knows
+    /// to restyle. Set on the main thread by WindowTheme.apply.
+    private(set) static var palette: [Color]?
+    private(set) static var paletteVersion = 0
+
+    static func setPalette(_ colors: [Color]?) {
+        palette = colors
+        paletteVersion &+= 1
+    }
+
     private static func color(_ n: Int) -> Color {
+        if let palette, (0..<16).contains(n), palette.count == 16 { return palette[n] }
         if n < 0 {
             let rgb = -1 - n
             return Color(red: Double((rgb >> 16) & 0xFF) / 255, green: Double((rgb >> 8) & 0xFF) / 255,
@@ -201,5 +242,38 @@ enum Ansi {
             let g = Double(8 + 10 * (n - 232)) / 255
             return Color(red: g, green: g, blue: g)
         }
+    }
+}
+
+/// Which lines of a new output are new or changed compared with an old one,
+/// by longest common subsequence, so one inserted line marks only itself.
+enum LineDiff {
+    static func compare(_ old: [String], _ new: [String]) -> (changed: Set<Int>, removed: Int) {
+        let n = old.count, m = new.count
+        // Very long outputs: line by line instead (the table would be too big).
+        guard n * m <= 4_000_000 else {
+            let changed = Set(new.indices.filter { $0 >= n || new[$0] != old[$0] })
+            return (changed, max(n - m, 0))
+        }
+        var table = Array(repeating: Array(repeating: 0, count: m + 1), count: n + 1)
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            for j in stride(from: m - 1, through: 0, by: -1) {
+                table[i][j] = old[i] == new[j] ? table[i + 1][j + 1] + 1 : max(table[i + 1][j], table[i][j + 1])
+            }
+        }
+        var i = 0, j = 0, same = Set<Int>()
+        while i < n && j < m {
+            if old[i] == new[j] {
+                same.insert(j)
+                i += 1
+                j += 1
+            } else if table[i + 1][j] >= table[i][j + 1] {
+                i += 1
+            } else {
+                j += 1
+            }
+        }
+        let changed = Set(new.indices).subtracting(same)
+        return (changed, n - same.count)
     }
 }

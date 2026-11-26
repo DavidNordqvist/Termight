@@ -214,3 +214,42 @@ fn secrets_are_redacted_and_no_log_writes_nothing() {
     let _ = fs::remove_dir_all(&home);
     let _ = fs::remove_dir_all(&quiet);
 }
+
+/// SIGTERM (the launcher's Esc) still stops a running command promptly, and
+/// a command that exits at once still reports its exit code.
+#[test]
+fn cancel_and_exit_codes_still_work() {
+    let home = scratch("cancel");
+    let child = core()
+        .args(["--", "sleep 30"])
+        .env("HOME", &home)
+        .env("SHELL", shell())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    std::thread::sleep(Duration::from_millis(500));
+    let start = Instant::now();
+    unsafe { kill(child.id() as i32, 15) };
+    let out = child.wait_with_output().unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(text.starts_with("✗ cancelled"), "{text}");
+    assert!(
+        start.elapsed() < Duration::from_secs(3),
+        "took {:?}",
+        start.elapsed()
+    );
+
+    let out = core()
+        .args(["--", "exit 7"])
+        .env("HOME", &home)
+        .env("SHELL", shell())
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(text.starts_with("✗ exit 7"), "{text}");
+    let _ = fs::remove_dir_all(&home);
+}
+
+unsafe extern "C" {
+    fn kill(pid: i32, sig: i32) -> i32;
+}
