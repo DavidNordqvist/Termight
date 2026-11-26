@@ -1,0 +1,414 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1F0EAEEF4B1DB531788B31A8 /* Launcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D7817148CAAE36C31F6E51B /* Launcher.swift */; };
+		3C9D5ED5AD90C752CFBBE678 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A78DEB8A58D652DD88FCF26 /* SettingsView.swift */; };
+		4CDD3D97E7EED2FC473B202C /* Jobs.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57B6D7D360282695F8D1ABD /* Jobs.swift */; };
+		5F2593348922D0D4E44EBC32 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9643872DE28488A240F9AAE3 /* AppState.swift */; };
+		79897CD2153772BC2076966B /* Termight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92677B64C62C02DD46F24EE7 /* Termight.swift */; };
+		B2C3D4E5F60718293A4B5C6D /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* Updater.swift */; };
+		9006DF3654DA2E5B90B2B75E /* Extras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520F1AF6EA7984BF88B99B79 /* Extras.swift */; };
+		BD84DF7F7FC04F6BFF92A3A7 /* Core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635E39280BE68888B799F199 /* Core.swift */; };
+		CC189F87F463F0EC80A2AC79 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 878939BEFEE3CDFA1836AEA8 /* Assets.xcassets */; };
+		335347397ABD15EAC39B7BF3 /* Ansi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66EFE9ABF1AD68652E8A876E /* Ansi.swift */; };
+		373623356DF1FDD94D3CF509 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959FC56938E86262F095BB5D /* Secrets.swift */; };
+		E547FE2952B17985ABDA3F84 /* StatusCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = D96E56782635DFF4F4CD1EAB /* StatusCommands.swift */; };
+		CE2C6F10750202DB1596EDB2 /* FinderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0C4DAA8A0F65CF1CA181B9 /* FinderService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1B2C3D4E5F60718293A4B5C /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
+		520F1AF6EA7984BF88B99B79 /* Extras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extras.swift; sourceTree = "<group>"; };
+		5A78DEB8A58D652DD88FCF26 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		635E39280BE68888B799F199 /* Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core.swift; sourceTree = "<group>"; };
+		878939BEFEE3CDFA1836AEA8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		92677B64C62C02DD46F24EE7 /* Termight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Termight.swift; sourceTree = "<group>"; };
+		92D4DAD7B0751704569405F2 /* Termight.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Termight.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9643872DE28488A240F9AAE3 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		9D7817148CAAE36C31F6E51B /* Launcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Launcher.swift; sourceTree = "<group>"; };
+		B57B6D7D360282695F8D1ABD /* Jobs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Jobs.swift; sourceTree = "<group>"; };
+		66EFE9ABF1AD68652E8A876E /* Ansi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ansi.swift; sourceTree = "<group>"; };
+		959FC56938E86262F095BB5D /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		D96E56782635DFF4F4CD1EAB /* StatusCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusCommands.swift; sourceTree = "<group>"; };
+		9F0C4DAA8A0F65CF1CA181B9 /* FinderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderService.swift; sourceTree = "<group>"; };
+		A86E39BB6161B1D1DBD05715 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		A081DE77066712DAAB558167 = {
+			isa = PBXGroup;
+			children = (
+				B5D78E82FE95191D04425A68 /* Termight */,
+				C353DADCA4EBE7BA3936403F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B5D78E82FE95191D04425A68 /* Termight */ = {
+			isa = PBXGroup;
+			children = (
+				9643872DE28488A240F9AAE3 /* AppState.swift */,
+				878939BEFEE3CDFA1836AEA8 /* Assets.xcassets */,
+				635E39280BE68888B799F199 /* Core.swift */,
+				520F1AF6EA7984BF88B99B79 /* Extras.swift */,
+				B57B6D7D360282695F8D1ABD /* Jobs.swift */,
+				9D7817148CAAE36C31F6E51B /* Launcher.swift */,
+				5A78DEB8A58D652DD88FCF26 /* SettingsView.swift */,
+				92677B64C62C02DD46F24EE7 /* Termight.swift */,
+				A86E39BB6161B1D1DBD05715 /* Info.plist */,
+				9F0C4DAA8A0F65CF1CA181B9 /* FinderService.swift */,
+				D96E56782635DFF4F4CD1EAB /* StatusCommands.swift */,
+				959FC56938E86262F095BB5D /* Secrets.swift */,
+				66EFE9ABF1AD68652E8A876E /* Ansi.swift */,
+				A1B2C3D4E5F60718293A4B5C /* Updater.swift */,
+			);
+			path = Termight;
+			sourceTree = "<group>";
+		};
+		C353DADCA4EBE7BA3936403F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				92D4DAD7B0751704569405F2 /* Termight.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		819E1C5C6A684640FCD78B35 /* Termight */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 01FE5FCE6A50BEDDE63C278D /* Build configuration list for PBXNativeTarget "Termight" */;
+			buildPhases = (
+				0FB91EDC0227A05160D5C50F /* Build Rust core */,
+				3025A928675BA4031EB9CABD /* Sources */,
+				5FF94AF4DBF42C7E689F4662 /* Resources */,
+				4C4CD2687E00375BEAA80DA1 /* Embed Rust core */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Termight;
+			packageProductDependencies = (
+			);
+			productName = Termight;
+			productReference = 92D4DAD7B0751704569405F2 /* Termight.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		444A199F45A164946F5770C4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					819E1C5C6A684640FCD78B35 = {
+						DevelopmentTeam = F5G96WU6K4;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = DCA22F0D899C94574BDCB20B /* Build configuration list for PBXProject "Termight" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = A081DE77066712DAAB558167;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C353DADCA4EBE7BA3936403F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				819E1C5C6A684640FCD78B35 /* Termight */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5FF94AF4DBF42C7E689F4662 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CC189F87F463F0EC80A2AC79 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		0FB91EDC0227A05160D5C50F /* Build Rust core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust core";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Login shell so cargo is found wherever rustup put it.\ncd \"$PROJECT_DIR/..\"\n/bin/zsh -lc 'cargo build --release'\n";
+		};
+		4C4CD2687E00375BEAA80DA1 /* Embed Rust core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed Rust core";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Named termight-core, not termight: that collides with Termight on case-insensitive APFS.\n# Runs before the app is signed. Hardened runtime to match the app;\n# a release build adds --timestamp via OTHER_CODE_SIGN_FLAGS.\ndest=\"$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/termight-core\"\ncp \"$PROJECT_DIR/../target/release/termight\" \"$dest\"\ncodesign --force --options runtime $OTHER_CODE_SIGN_FLAGS --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" \"$dest\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3025A928675BA4031EB9CABD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F2593348922D0D4E44EBC32 /* AppState.swift in Sources */,
+				BD84DF7F7FC04F6BFF92A3A7 /* Core.swift in Sources */,
+				9006DF3654DA2E5B90B2B75E /* Extras.swift in Sources */,
+				4CDD3D97E7EED2FC473B202C /* Jobs.swift in Sources */,
+				1F0EAEEF4B1DB531788B31A8 /* Launcher.swift in Sources */,
+				3C9D5ED5AD90C752CFBBE678 /* SettingsView.swift in Sources */,
+				79897CD2153772BC2076966B /* Termight.swift in Sources */,
+				CE2C6F10750202DB1596EDB2 /* FinderService.swift in Sources */,
+				E547FE2952B17985ABDA3F84 /* StatusCommands.swift in Sources */,
+				373623356DF1FDD94D3CF509 /* Secrets.swift in Sources */,
+				335347397ABD15EAC39B7BF3 /* Ansi.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6D /* Updater.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3430916D7AFDD5D6D5FADE71 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		79F5A6A2232DEB75958EFD55 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5G96WU6K4;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Termight;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_FILE = Termight/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ca.nordqvist.termight;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		800D7D02FE3C4D1E082F81C4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F5G96WU6K4;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Termight;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_FILE = Termight/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ca.nordqvist.termight;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C8BDF0EED5AB0432AE8A67B3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		01FE5FCE6A50BEDDE63C278D /* Build configuration list for PBXNativeTarget "Termight" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				79F5A6A2232DEB75958EFD55 /* Debug */,
+				800D7D02FE3C4D1E082F81C4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DCA22F0D899C94574BDCB20B /* Build configuration list for PBXProject "Termight" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C8BDF0EED5AB0432AE8A67B3 /* Debug */,
+				3430916D7AFDD5D6D5FADE71 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 444A199F45A164946F5770C4 /* Project object */;
+}

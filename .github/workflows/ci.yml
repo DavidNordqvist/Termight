@@ -1,0 +1,119 @@
+name: CI
+
+# Rust checks run on the helmroom VM (Linux), on the runner helmroom manages for
+# this project: it runs as a user of its own, takes one of the VM's shared build
+# slots, and is stopped by helmroom if the repository becomes public. The macOS
+# app can only be built with Xcode, so that job runs on the self-hosted Mac runner.
+#
+# Both runners are self-hosted and run whatever a workflow says, so both jobs
+# skip pull requests from forks (see each job's `if`). If the repository
+# becomes public, also require approval for workflows from outside contributors
+# (Settings → Actions → General).
+
+on:
+  push:
+    branches: [main, Dev]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (fmt, clippy, test, build)
+    # Never for a pull request from a fork: this runner is self-hosted, and a
+    # fork's pull request would run its own code on the VM.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: helmroom-termight
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Test
+        # The tests write a small cache under $HOME; give them a throwaway home
+        # so nothing lands in the runner user's real one.
+        run: |
+          export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
+          mkdir -p "$RUNNER_TEMP/home"
+          HOME="$RUNNER_TEMP/home" cargo test --locked
+
+      - name: Build (release)
+        run: cargo build --release --locked
+
+  app:
+    name: macOS app (test, build, verify)
+    # Never for a pull request from a fork: this runner is a real user on a real
+    # Mac, and a fork's pull request would run its own code there.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
+    defaults:
+      run:
+        # Login shell, so cargo and Homebrew are on PATH as they are in Terminal.
+        shell: /bin/zsh -l -e {0}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set build folder
+        # Outside the checkout and removed at the end (see the last step).
+        run: echo "DERIVED_DATA=$RUNNER_TEMP/termight-derived" >> "$GITHUB_ENV"
+
+      - name: Rust tests on macOS
+        run: cargo test --release --locked
+
+      - name: Build app
+        # The Xcode project builds and embeds the Rust core itself.
+        # Ad-hoc signed ("-"): the runner's background session cannot use the
+        # signing key in the login keychain, and CI only needs to prove the app
+        # builds. Signed builds come from build.sh and the release build.
+        run: |
+          xcodebuild -project Termight/Termight.xcodeproj -scheme Termight \
+            -configuration Release -derivedDataPath "$DERIVED_DATA" -quiet build \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
+
+      - name: Verify app
+        run: |
+          app="$DERIVED_DATA/Build/Products/Release/Termight.app"
+          codesign --verify --deep --strict "$app"
+          test -x "$app/Contents/MacOS/termight-core"
+          "$app/Contents/MacOS/termight-core" 'echo core runs'
+          # Both Spotlight actions must be in the extracted App Intents metadata.
+          grep -q RunCommandIntent "$app/Contents/Resources/Metadata.appintents/extract.actionsdata"
+          grep -q RunSnippetIntent "$app/Contents/Resources/Metadata.appintents/extract.actionsdata"
+          ditto -c -k --keepParent "$app" "$RUNNER_TEMP/Termight.app.zip"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Termight.app
+          path: ${{ runner.temp }}/Termight.app.zip
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Remove build products
+        # A second Termight.app on this Mac registers with Launch Services and can
+        # stop Spotlight from showing the installed app's actions.
+        if: always()
+        run: rm -rf "${DERIVED_DATA:?}"

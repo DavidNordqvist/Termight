@@ -1,0 +1,14 @@
+# Weekly pull requests for newer GitHub Actions (kept pinned by SHA) and Rust
+# crates. They target Dev and need the owner's review like any other change.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: Dev
+    schedule:
+      interval: weekly
+  - package-ecosystem: cargo
+    directory: /
+    target-branch: Dev
+    schedule:
+      interval: weekly

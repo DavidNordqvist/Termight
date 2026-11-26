@@ -1,0 +1,6 @@
+target/
+dist/
+Termight/build/
+Termight/build-release/
+xcuserdata/
+.DS_Store
