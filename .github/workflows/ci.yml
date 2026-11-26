@@ -1,19 +1,28 @@
 name: CI
 
-# Both jobs run on GitHub's own runners. Workflows from outside contributors
+# All jobs run on GitHub's own runners. Workflows from outside contributors
 # wait for the owner's approval (Settings → Actions → General).
+#
+# The audit job checks Cargo.lock against the RustSec advisory database, on
+# every push and pull request and once a week, so an advisory published for an
+# unchanged Cargo.lock still shows up. It is a separate job, not part of the
+# two checks main and Dev require, so a new advisory flags the problem without
+# blocking unrelated merges. The weekly run does only the audit.
 
 on:
   push:
     branches: [main, Dev]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"  # Mondays 06:17 UTC: audit only
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Per event too, so the weekly audit and a push to main don't cancel each other.
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -22,6 +31,7 @@ env:
 jobs:
   rust:
     name: Rust (fmt, clippy, test, build)
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -52,6 +62,7 @@ jobs:
 
   app:
     name: macOS app (test, build, verify)
+    if: github.event_name != 'schedule'
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -97,3 +108,34 @@ jobs:
           path: ${{ runner.temp }}/Termight.app.zip
           retention-days: 7
           if-no-files-found: error
+
+  audit:
+    name: Audit (RustSec advisories)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
+
+      # Third-party audit actions aren't on this repository's allowed list, so
+      # the tool is built with cargo (about 3 minutes) and cached by version.
+      - name: Cache cargo-audit
+        id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-0.23.0-${{ runner.os }}
+
+      - name: Install cargo-audit
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --version 0.23.0 --locked
+
+      - name: Audit Cargo.lock
+        # Fails on a crate with a known vulnerability; warnings (unmaintained,
+        # yanked) are printed but don't fail the job.
+        run: cargo audit
