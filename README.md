@@ -55,7 +55,7 @@ The [guide](docs/guide.md) has the keys, the snippet rules and the limits.
 With Homebrew:
 
 ```bash
-brew install --cask davidnordqvist/tap/termight
+brew install --cask davidnordqvist/termight/termight
 ```
 
 Or download the latest `.dmg` from
