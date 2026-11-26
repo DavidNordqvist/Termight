@@ -1,14 +1,11 @@
 name: CI
 
-# Rust checks run on the helmroom VM (Linux), on the runner helmroom manages for
-# this project: it runs as a user of its own, takes one of the VM's shared build
-# slots, and is stopped by helmroom if the repository becomes public. The macOS
-# app can only be built with Xcode, so that job runs on the self-hosted Mac runner.
+# Rust checks run on a self-hosted Linux runner, as a user of its own. The macOS
+# app can only be built with Xcode, so that job runs on a self-hosted Mac runner.
 #
-# Both runners are self-hosted and run whatever a workflow says, so both jobs
-# skip pull requests from forks (see each job's `if`). If the repository
-# becomes public, also require approval for workflows from outside contributors
-# (Settings → Actions → General).
+# Both runners run whatever a workflow says, so both jobs skip pull requests
+# from forks (see each job's `if`), and workflows from outside contributors
+# wait for the owner's approval (Settings → Actions → General).
 
 on:
   push:
