@@ -9,31 +9,14 @@
 //! termight-core — run one shell command headlessly; also checks and completes
 //! commands for the Termight launcher.
 //!
-//! Usage:
-//!   termight [--cwd DIR] [--] <command...>   run; status line first, output trimmed
-//!   termight --stream [--cwd DIR] -- <cmd>   run; output streamed live to stdout,
-//!                                            then `status`, `cwd`, `code` lines
-//!                                            (key<TAB>value) on stderr
-//!   termight --check [--cwd DIR] -- <line>   exit 0 runnable, 2 runnable but needs a
-//!                                            real terminal, 3 snippet needs values
-//!                                            (one line per unfilled placeholder:
-//!                                            name, `=default` or empty, kind
-//!                                            text|number|choice|secret, then any
-//!                                            choices, tab-separated), 1 not runnable;
-//!                                            prints how it resolved or why not
-//!   termight --complete [--cwd DIR] -- <line>  first line: word being completed,
-//!                                            then one candidate per line
-//!   termight --expand -- <line>              print the line as a script, any snippet
-//!                                            expanded and its values exported
-//!   termight --which -- <name>               exit 0 and print where a command of that
-//!                                            name comes from, ignoring snippets
-//!   echo "ls ~" | termight                   command read from stdin
-//!
-//!   --strict-values   with a snippet: refuse words beyond its placeholders instead
-//!                     of appending them (for callers that pass text nobody typed)
-//!   --color           (with --stream) run on a pseudo-terminal, so programs color
-//!                     their output as in Terminal; colors (SGR codes) and carriage
-//!                     returns are passed through, everything else is stripped
+//! Options are on `Cli` below (`termight-core --help`). Output formats:
+//! - run: the status line, then the output trimmed to TERMIGHT_LINES. With
+//!   --stream the output goes to stdout as it comes, then `status`, `cwd` and
+//!   `code` lines (key<TAB>value) to stderr. With no command, it is read from stdin.
+//! - --check: what the line resolved to, or why it can't run. With exit 3, one
+//!   line per placeholder still needing a value: name, `=default` or empty,
+//!   kind (text|number|choice|secret), then any choices, tab-separated.
+//! - A mistake in the arguments exits 1, never 2 or 3.
 //!
 //! Env:
 //!   TERMIGHT_TIMEOUT   seconds before the command is killed (default 30)
@@ -41,6 +24,7 @@
 //!   TERMIGHT_RC=1      source ~/.zshrc (or ~/.bashrc) first: aliases and functions
 //!   TERMIGHT_LOG_FILE  also write this run's full output to this path
 //!   TERMIGHT_NO_LOG=1  write no logs or history (menu bar commands)
+//!   TERMIGHT_NO_HISTORY=1  write the logs but no history row (watch reruns)
 //!   TERMIGHT_COLUMNS   terminal width for --color (default 100)
 //!   TERMIGHT_FILES, TERMIGHT_FILE_<n>, TERMIGHT_SECRET_<name>: see snippet.rs.
 //!                      A secret's value is replaced by •••• in the output.
@@ -126,6 +110,42 @@ enum Mode {
     Which,
 }
 
+/// Run one shell command headlessly; also checks and completes commands for
+/// the Termight launcher.
+#[derive(clap::Parser, Debug)]
+#[command(name = "termight-core", version)]
+#[command(group(clap::ArgGroup::new("mode").args(["check", "complete", "expand", "which"])))]
+struct Cli {
+    /// Is the line runnable? Exit 0 yes, 2 yes but it needs a real terminal,
+    /// 3 a snippet needs values (one line per value), 1 no
+    #[arg(long)]
+    check: bool,
+    /// Print the word being completed, then one candidate per line
+    #[arg(long)]
+    complete: bool,
+    /// Print the line as a script: a snippet expanded, its values exported
+    #[arg(long)]
+    expand: bool,
+    /// Exit 0 and print where a command of this name comes from, ignoring snippets
+    #[arg(long)]
+    which: bool,
+    /// Stream output live on stdout; `status`, `cwd` and `code` go to stderr
+    #[arg(long)]
+    stream: bool,
+    /// With a snippet, refuse words beyond its placeholders instead of appending them
+    #[arg(long = "strict-values")]
+    strict: bool,
+    /// With --stream, run on a pseudo-terminal and keep colors
+    #[arg(long)]
+    color: bool,
+    /// Folder to run in (default, or empty: the home folder)
+    #[arg(long, value_name = "DIR")]
+    cwd: Option<String>,
+    /// The command or line; read from stdin when left out (run mode)
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    text: Vec<String>,
+}
+
 struct Opts {
     mode: Mode,
     stream: bool,
@@ -135,46 +155,49 @@ struct Opts {
     text: String,
 }
 
-fn parse_args() -> Opts {
-    let mut args = std::env::args().skip(1).peekable();
-    let mut o = Opts {
-        mode: Mode::Run,
-        stream: false,
-        strict: false,
-        color: false,
-        cwd: None,
-        text: String::new(),
-    };
-    while let Some(a) = args.peek() {
-        match a.as_str() {
-            "--check" => o.mode = Mode::Check,
-            "--complete" => o.mode = Mode::Complete,
-            "--expand" => o.mode = Mode::Expand,
-            "--which" => o.mode = Mode::Which,
-            "--stream" => o.stream = true,
-            "--strict-values" => o.strict = true,
-            "--color" => o.color = true,
-            "--cwd" => {
-                args.next();
-                o.cwd = args.peek().map(PathBuf::from);
-            }
-            "--" => {
-                args.next();
-                break;
-            }
-            _ => break,
+impl Cli {
+    fn opts(self) -> Opts {
+        let mode = if self.check {
+            Mode::Check
+        } else if self.complete {
+            Mode::Complete
+        } else if self.expand {
+            Mode::Expand
+        } else if self.which {
+            Mode::Which
+        } else {
+            Mode::Run
+        };
+        let text = if self.text.is_empty() && matches!(mode, Mode::Run) {
+            let mut s = String::new();
+            let _ = std::io::stdin().read_to_string(&mut s);
+            s
+        } else {
+            self.text.join(" ")
+        };
+        Opts {
+            mode,
+            stream: self.stream,
+            strict: self.strict,
+            color: self.color,
+            // An empty folder means none, as before: the home folder.
+            cwd: self.cwd.filter(|d| !d.is_empty()).map(PathBuf::from),
+            text,
         }
-        args.next();
     }
-    let rest: Vec<String> = args.collect();
-    o.text = if rest.is_empty() && matches!(o.mode, Mode::Run) {
-        let mut s = String::new();
-        let _ = std::io::stdin().read_to_string(&mut s);
-        s
-    } else {
-        rest.join(" ")
-    };
-    o
+}
+
+fn parse_args() -> Opts {
+    use clap::Parser;
+    match Cli::try_parse() {
+        Ok(cli) => cli.opts(),
+        Err(e) => {
+            // --help and --version print and exit 0. A mistake exits 1, never
+            // 2 or 3: for --check those mean "needs a terminal" and "needs values".
+            let _ = e.print();
+            std::process::exit(if e.use_stderr() { 1 } else { 0 });
+        }
+    }
 }
 
 fn main() {
@@ -951,5 +974,51 @@ mod tests {
         // No secrets: nothing is held.
         let mut none = Redactor::new(&[]);
         assert_eq!(none.push(b"abc"), b"abc");
+    }
+
+    fn cli(args: &[&str]) -> Result<Cli, clap::Error> {
+        use clap::Parser;
+        Cli::try_parse_from(std::iter::once("termight-core").chain(args.iter().copied()))
+    }
+
+    #[test]
+    fn arguments_the_app_sends() {
+        let c = cli(&["--check", "--cwd", "/tmp", "--", "ls -la"]).unwrap();
+        assert!(c.check && c.cwd.as_deref() == Some("/tmp"));
+        // An empty folder is accepted and means the home folder.
+        let empty = cli(&["--check", "--cwd", "", "--", "ls"]).unwrap();
+        assert!(empty.opts().cwd.is_none());
+        assert_eq!(c.text, vec!["ls -la"]);
+        let c = cli(&["--stream", "--color", "--cwd", "/tmp", "--", "echo hi"]).unwrap();
+        assert!(c.stream && c.color && !c.check);
+        let c = cli(&["--strict-values", "--", "snip a b"]).unwrap();
+        assert!(c.strict);
+        // Completion keeps the trailing space, which means "a new word".
+        let c = cli(&["--complete", "--cwd", "/tmp", "--", "git ch "]).unwrap();
+        assert_eq!(c.opts().text, "git ch ");
+        // After --, anything is text, even a flag's name or nothing at all.
+        assert_eq!(cli(&["--", "--version"]).unwrap().text, vec!["--version"]);
+        assert_eq!(cli(&["--expand", "--", ""]).unwrap().opts().text, "");
+        // Without --: the words are the command, flags inside it included.
+        assert_eq!(
+            cli(&["echo", "-n", "hi"]).unwrap().text,
+            vec!["echo", "-n", "hi"]
+        );
+        assert_eq!(
+            cli(&["echo core runs"]).unwrap().text,
+            vec!["echo core runs"]
+        );
+    }
+
+    #[test]
+    fn argument_mistakes_are_errors() {
+        // Two modes at once, a missing --cwd value.
+        for bad in [&["--check", "--which", "x"][..], &["--cwd"]] {
+            let e = cli(bad).unwrap_err();
+            assert!(e.use_stderr(), "{bad:?} should be an error");
+        }
+        assert!(!cli(&["--help"]).unwrap_err().use_stderr());
+        // As before: an unknown word up front starts the command.
+        assert_eq!(cli(&["--bogus", "x"]).unwrap().text, vec!["--bogus", "x"]);
     }
 }

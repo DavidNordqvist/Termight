@@ -5,3 +5,4 @@ edition = "2024"
 license = "GPL-3.0-only"
 
 [dependencies]
+clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }

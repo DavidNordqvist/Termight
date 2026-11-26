@@ -164,7 +164,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Login shell so cargo is found wherever rustup put it.\ncd \"$PROJECT_DIR/..\"\n/bin/zsh -lc 'cargo build --release'\n";
+			shellScript = "# Login shell so cargo is found wherever rustup put it.\ncd \"$PROJECT_DIR/..\"\n/bin/zsh -lc 'cargo build --release --locked'\n";
 		};
 		4C4CD2687E00375BEAA80DA1 /* Embed Rust core */ = {
 			isa = PBXShellScriptBuildPhase;
